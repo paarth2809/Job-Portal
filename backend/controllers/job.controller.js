@@ -8,7 +8,7 @@ export const postJob = async (req, res) => {
 
         if (!title || !description || !requirements || !salary || !location || !jobType || !experience || !position || !companyId) {
             return res.status(400).json({
-                message: "Somethin is missing.",
+                message: "Something is missing.",
                 success: false
             })
         };
@@ -45,9 +45,9 @@ export const getAllJobs = async (req, res) => {
         };
         const jobs = await Job.find(query).populate({
             path: "company"
-        }).sort({ createdAt: -1 });
+        }).sort({ createdAt: -1 });   // increasing
         if (!jobs) {
-            return res.status(404).json({
+            return res.status(404). json({
                 message: "Jobs not found.",
                 success: false
             })

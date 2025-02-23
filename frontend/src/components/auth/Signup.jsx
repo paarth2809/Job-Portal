@@ -52,7 +52,7 @@ const Signup = () => {
             });
             if (res.data.success) {
                 navigate("/login");
-                toast.success(res.data.message);
+                toast.success(res.data.message);  // sooner 
             }
         } catch (error) {
             console.log(error);

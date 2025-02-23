@@ -49,40 +49,44 @@ export const register = async (req, res) => {
 export const login = async (req, res) => {
     try {
         const { email, password, role } = req.body;
-        
+
         if (!email || !password || !role) {
             return res.status(400).json({
                 message: "Something is missing",
                 success: false
             });
-        };
+        }
+
         let user = await User.findOne({ email });
         if (!user) {
             return res.status(400).json({
                 message: "Incorrect email or password.",
                 success: false,
-            })
+            });
         }
+
         const isPasswordMatch = await bcrypt.compare(password, user.password);
         if (!isPasswordMatch) {
             return res.status(400).json({
                 message: "Incorrect email or password.",
                 success: false,
-            })
-        };
-        // check role is correct or not
-        if (role !== user.role) {
-            return res.status(400).json({
-                message: "Account doesn't exist with current role.",
-                success: false
-            })
-        };
-
-        const tokenData = {
-            userId: user._id
+            });
         }
-        const token = await jwt.sign(tokenData, process.env.SECRET_KEY, { expiresIn: '1d' });
 
+        // Ensure role matches (case-insensitive)
+        if (role.toLowerCase() !== user.role.toLowerCase()) {
+            return res.status(400).json({
+                message: "Account doesn't exist with the selected role.",
+                success: false
+            });
+        }
+
+
+        // Generate Token
+        const tokenData = { userId: user._id };
+        const token = jwt.sign(tokenData, process.env.JWT_SECRET, { expiresIn: "1d" });
+
+        // Remove sensitive data before sending response
         user = {
             _id: user._id,
             fullname: user.fullname,
@@ -90,17 +94,27 @@ export const login = async (req, res) => {
             phoneNumber: user.phoneNumber,
             role: user.role,
             profile: user.profile
-        }
+        };
 
-        return res.status(200).cookie("token", token, { maxAge: 1 * 24 * 60 * 60 * 1000, httpsOnly: true, sameSite: 'strict' }).json({
-            message: `Welcome back ${user.fullname}`,
-            user,
-            success: true
-        })
+        // Set the token in HTTP-Only cookie
+        return res.status(200)
+            .cookie("token", token, {
+                maxAge: 24 * 60 * 60 * 1000, // 1 day
+                httpOnly: true, // Prevents client-side access
+                secure: process.env.NODE_ENV === "production", // Only secure in production
+                sameSite: "strict"
+            })
+            .json({
+                message: `Welcome back, ${user.fullname}!`,
+                user,
+                success: true
+            });
+
     } catch (error) {
-        console.log(error);
+        console.error("Login Error:", error);
+        return res.status(500).json({ message: "Internal server error" });
     }
-}
+};
 export const logout = async (req, res) => {
     try {
         return res.status(200).cookie("token", "", { maxAge: 0 }).json({
